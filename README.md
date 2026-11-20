@@ -1,58 +1,198 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Post CRUD with Docker
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A simple Laravel 13 app where you can create, read, update and delete posts. It runs entirely in Docker.
 
-## About Laravel
+You do **not** need PHP, Composer or MySQL on your computer. Docker installs and runs them for you.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Container | What it runs |
+|---|---|
+| `laravel_app` | PHP 8.4 + Apache + Composer + the Laravel code |
+| `laravel_db` | MySQL 8.4 database |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 1. What you need
 
-## Learning Laravel
+Install these two programs first:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Git**: https://git-scm.com/downloads
+- **Docker Desktop**: https://www.docker.com/products/docker-desktop/
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Before you continue, open Docker Desktop and wait until it says **Engine running**.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Check that both are installed:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git --version
+docker --version
+docker compose version
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## 2. Clone and run the project
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Step 1: Clone the project
 
-## Code of Conduct
+```bash
+git clone https://github.com/yonyen249-ai/laravel-hosting-with-docker.git
+cd laravel-hosting-with-docker
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Step 2: Create the `.env` file
 
-## Security Vulnerabilities
+The `.env` file is not uploaded to GitHub, so you create it from the example file.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# Git Bash / Mac / Linux
+cp .env.example .env
 
-## License
+# Windows CMD or PowerShell
+copy .env.example .env
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+> **Important:** Do not skip this step. Without `.env`, the database will not start.
+
+### Step 3: Build and start the containers
+
+```bash
+docker compose up -d --build
+```
+
+The first run takes a few minutes because Docker downloads PHP and MySQL. Later runs are much faster.
+
+You do **not** need to run `composer install`, `php artisan key:generate` or `php artisan migrate`. The container does all of that automatically when it starts.
+
+### Step 4: Open the app
+
+Go to **http://localhost:8000**
+
+If the page does not load yet, wait about 20 seconds and refresh. MySQL needs time to start the first time.
+
+Check that both containers are running:
+
+```bash
+docker compose ps
+```
+
+Both `laravel_app` and `laravel_db` should show **Up**.
+
+---
+
+## 3. See the database
+
+The database login comes from your `.env` file:
+
+| Setting | Value |
+|---|---|
+| Database | `laravel` |
+| Username | `laravel` |
+| Password | `secret` |
+| Root password | `rootsecret` |
+
+### Option A: MySQL command line (recommended)
+
+Open MySQL inside the database container:
+
+```bash
+docker exec -it laravel_db mysql -u laravel -psecret laravel
+```
+
+Then type SQL at the `mysql>` prompt:
+
+```sql
+SHOW TABLES;            -- list all tables
+DESCRIBE posts;         -- show the columns of the posts table
+SELECT * FROM posts;    -- show all posts
+exit                    -- leave MySQL
+```
+
+> **Windows Git Bash:** if you see `the input device is not a TTY`, put `winpty` at the start of the command:
+> `winpty docker exec -it laravel_db mysql -u laravel -psecret laravel`
+
+### Option B: Run one query without going inside
+
+```bash
+docker exec laravel_db mysql -u laravel -psecret laravel -e "SELECT * FROM posts;"
+```
+
+### Option C: Use Laravel's database commands
+
+```bash
+docker compose exec app php artisan db:show           # database info and list of tables
+docker compose exec app php artisan db:table posts    # columns of the posts table
+```
+
+### Option D: Use a GUI program (DBeaver, HeidiSQL, TablePlus, MySQL Workbench)
+
+MySQL is not reachable from your computer by default. To open it, add `ports` under the `db:` service in `docker-compose.yml`:
+
+```yaml
+  db:
+    image: mysql:8.4
+    ports:
+      - "3307:3306"
+```
+
+Restart the containers:
+
+```bash
+docker compose up -d
+```
+
+Then connect your GUI program with:
+
+| Setting | Value |
+|---|---|
+| Host | `127.0.0.1` |
+| Port | `3307` |
+| Username | `laravel` |
+| Password | `secret` |
+| Database | `laravel` |
+
+> Only do this on your own computer. Do **not** open the database port on a real server.
+
+---
+
+## 4. Useful commands
+
+| What you want to do | Command |
+|---|---|
+| Start the app | `docker compose up -d` |
+| Stop the app | `docker compose down` |
+| Rebuild after changing code | `docker compose up -d --build` |
+| See the app logs | `docker compose logs -f app` |
+| See the database logs | `docker compose logs -f db` |
+| Run an artisan command | `docker compose exec app php artisan <command>` |
+| Open a shell inside the app container | `docker compose exec app bash` |
+| Delete everything, **including the database data** | `docker compose down -v` |
+
+> The code is copied into the image when it is built. After you edit code, run `docker compose up -d --build` to see your changes.
+
+---
+
+## 5. Common problems
+
+| Problem | Fix |
+|---|---|
+| `port is already allocated` (port 8000 is in use) | In `.env`, change `APP_PORT=8000` to `APP_PORT=8080`, run `docker compose up -d`, then open http://localhost:8080 |
+| A folder called `.env` was created | You started Docker before Step 2. Run `docker compose down`, delete the `.env` folder, then do Step 2 and Step 3 again |
+| The database won't start after you changed passwords in `.env` | The old database still has the old passwords. Run `docker compose down -v` (this **deletes all data**), then `docker compose up -d` |
+| `Cannot connect to the Docker daemon` | Docker Desktop is not running. Open it and wait for **Engine running** |
+| The page shows an error | Run `docker compose logs app` to see what went wrong |
+
+---
+
+## 6. Project structure (CRUD files)
+
+```
+app/Http/Controllers/PostController.php    # index, create, store, show, edit, update, destroy
+app/Models/Post.php                        # Post model
+database/migrations/..._create_posts_table.php
+resources/views/posts/                     # index, create, edit, show, _form
+routes/web.php                             # Route::resource('posts', ...)
+
+Dockerfile                                 # builds the PHP + Apache + Composer image
+docker-compose.yml                         # runs the app and MySQL containers
+docker/entrypoint.sh                       # runs on start: APP_KEY, wait for DB, migrate
+```
